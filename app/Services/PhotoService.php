@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Family;
 use App\Models\PhotoSelection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 
 class PhotoService
 {
@@ -159,9 +160,18 @@ class PhotoService
 
     public function createFamilyDirectory($directoryName)
     {
-        // When photos are served externally (e.g. Cloudflare Tunnel), the uploads
-        // directory lives on the local machine, not the app server. Skip creation
-        // and return the expected local path so the admin knows what to create.
+        $webhookUrl = config('photoshoot.storage.webhook_url');
+
+        if ($webhookUrl) {
+            Http::withToken(config('photoshoot.storage.webhook_secret'))
+                ->post(rtrim($webhookUrl, '/').'/create-directory', [
+                    'directory_name' => $directoryName,
+                ]);
+
+            return $this->uploadsPath.'/'.$directoryName;
+        }
+
+        // External photos URL but no webhook — skip, admin must create manually.
         if (config('photoshoot.storage.photos_url')) {
             return $this->uploadsPath.'/'.$directoryName;
         }
