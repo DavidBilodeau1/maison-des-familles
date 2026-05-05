@@ -202,6 +202,11 @@ class PhotoService
 
     protected function isImageFile($file)
     {
+        // Skip macOS resource fork files (._filename)
+        if (str_starts_with($file->getFilename(), '.')) {
+            return false;
+        }
+
         return in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
     }
 }
