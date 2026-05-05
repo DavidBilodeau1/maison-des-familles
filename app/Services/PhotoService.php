@@ -24,6 +24,12 @@ class PhotoService
 
     public function getFamilyPhotos(Family $family)
     {
+        if ($this->webhookUrl()) {
+            $response = $this->webhook('get', '/list-photos/'.$family->directory_name);
+
+            return $response->successful() ? $response->json('files', []) : [];
+        }
+
         $familyDir = $this->uploadsPath.'/'.$family->directory_name;
 
         if (! File::exists($familyDir)) {
@@ -31,9 +37,31 @@ class PhotoService
         }
 
         $photos = [];
-        $files = File::files($familyDir);
+        foreach (File::files($familyDir) as $file) {
+            if ($this->isImageFile($file)) {
+                $photos[] = $file->getFilename();
+            }
+        }
 
-        foreach ($files as $file) {
+        return $photos;
+    }
+
+    public function getFinalChoicesPhotos(Family $family)
+    {
+        if ($this->webhookUrl()) {
+            $response = $this->webhook('get', '/list-final/'.$family->directory_name);
+
+            return $response->successful() ? $response->json('files', []) : [];
+        }
+
+        $familyDir = $this->finalChoicesPath.'/'.$family->directory_name;
+
+        if (! File::exists($familyDir)) {
+            return [];
+        }
+
+        $photos = [];
+        foreach (File::files($familyDir) as $file) {
             if ($this->isImageFile($file)) {
                 $photos[] = $file->getFilename();
             }
@@ -44,16 +72,10 @@ class PhotoService
 
     public function syncFamilyPhotos(Family $family)
     {
-        // Get photos from uploads directory
         $uploadsPhotos = $this->getFamilyPhotos($family);
-
-        // Get photos from final_choices directory
         $finalPhotos = $this->getFinalChoicesPhotos($family);
-
-        // Get existing photo selections
         $existingPhotos = $family->photoSelections()->pluck('photo_filename')->toArray();
 
-        // Add new photos from uploads
         foreach ($uploadsPhotos as $photo) {
             if (! in_array($photo, $existingPhotos)) {
                 PhotoSelection::create([
@@ -65,7 +87,6 @@ class PhotoService
             }
         }
 
-        // Add new photos from final_choices (shouldn't happen normally, but just in case)
         foreach ($finalPhotos as $photo) {
             if (! in_array($photo, $existingPhotos)) {
                 PhotoSelection::create([
@@ -77,38 +98,15 @@ class PhotoService
             }
         }
 
-        // Remove photos that no longer exist in uploads directory
-        // Only delete photos that are still in 'uploads' location
         $family->photoSelections()
             ->where('location', 'uploads')
             ->whereNotIn('photo_filename', $uploadsPhotos)
             ->delete();
 
-        // Remove photos that no longer exist in final_choices directory
         $family->photoSelections()
             ->where('location', 'final_choices')
             ->whereNotIn('photo_filename', $finalPhotos)
             ->delete();
-    }
-
-    public function getFinalChoicesPhotos(Family $family)
-    {
-        $familyDir = $this->finalChoicesPath.'/'.$family->directory_name;
-
-        if (! File::exists($familyDir)) {
-            return [];
-        }
-
-        $photos = [];
-        $files = File::files($familyDir);
-
-        foreach ($files as $file) {
-            if ($this->isImageFile($file)) {
-                $photos[] = $file->getFilename();
-            }
-        }
-
-        return $photos;
     }
 
     public function moveSelectedPhotos(Family $family)
@@ -119,10 +117,20 @@ class PhotoService
             return;
         }
 
+        if ($this->webhookUrl()) {
+            $this->webhook('post', '/move-photos', [
+                'directory_name' => $family->directory_name,
+                'filenames' => $selectedPhotos->pluck('photo_filename')->toArray(),
+            ]);
+
+            $selectedPhotos->each(fn ($s) => $s->update(['location' => 'final_choices']));
+
+            return;
+        }
+
         $sourceDir = $this->uploadsPath.'/'.$family->directory_name;
         $destDir = $this->finalChoicesPath.'/'.$family->directory_name;
 
-        // Create destination directory if it doesn't exist
         if (! File::exists($destDir)) {
             File::makeDirectory($destDir, 0755, true);
         }
@@ -133,45 +141,21 @@ class PhotoService
 
             if (File::exists($sourcePath)) {
                 File::move($sourcePath, $destPath);
-
-                // Update the location in the database
                 $selection->update(['location' => 'final_choices']);
             }
         }
     }
 
-    public function getPhotoUrl($familyDirectoryName, $filename)
-    {
-        $baseUrl = config('photoshoot.storage.photos_url');
-
-        if ($baseUrl) {
-            return rtrim($baseUrl, '/').'/'.$familyDirectoryName.'/'.$filename;
-        }
-
-        return '/photos/'.$familyDirectoryName.'/'.$filename;
-    }
-
-    protected function isImageFile($file)
-    {
-        $extension = strtolower($file->getExtension());
-
-        return in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-    }
-
     public function createFamilyDirectory($directoryName)
     {
-        $webhookUrl = config('photoshoot.storage.webhook_url');
-
-        if ($webhookUrl) {
-            Http::withToken(config('photoshoot.storage.webhook_secret'))
-                ->post(rtrim($webhookUrl, '/').'/create-directory', [
-                    'directory_name' => $directoryName,
-                ]);
+        if ($this->webhookUrl()) {
+            $this->webhook('post', '/create-directory', [
+                'directory_name' => $directoryName,
+            ]);
 
             return $this->uploadsPath.'/'.$directoryName;
         }
 
-        // External photos URL but no webhook — skip, admin must create manually.
         if (config('photoshoot.storage.photos_url')) {
             return $this->uploadsPath.'/'.$directoryName;
         }
@@ -185,8 +169,39 @@ class PhotoService
         return $familyDir;
     }
 
+    public function getPhotoUrl($familyDirectoryName, $filename)
+    {
+        $baseUrl = config('photoshoot.storage.photos_url');
+
+        if ($baseUrl) {
+            return rtrim($baseUrl, '/').'/'.$familyDirectoryName.'/'.$filename;
+        }
+
+        return '/photos/'.$familyDirectoryName.'/'.$filename;
+    }
+
     public function isExternalStorage(): bool
     {
         return (bool) config('photoshoot.storage.photos_url');
+    }
+
+    protected function webhookUrl(): ?string
+    {
+        return config('photoshoot.storage.webhook_url') ?: null;
+    }
+
+    protected function webhook(string $method, string $endpoint, array $data = [])
+    {
+        $request = Http::withToken(config('photoshoot.storage.webhook_secret'))
+            ->timeout(10);
+
+        $url = rtrim($this->webhookUrl(), '/').$endpoint;
+
+        return $method === 'post' ? $request->post($url, $data) : $request->get($url);
+    }
+
+    protected function isImageFile($file)
+    {
+        return in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
     }
 }
