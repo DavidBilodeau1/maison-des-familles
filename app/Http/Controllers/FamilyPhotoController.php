@@ -40,10 +40,13 @@ class FamilyPhotoController extends Controller
         $this->photoService->syncFamilyPhotos($family);
 
         $photos = $family->photoSelections;
-        // Calculate time remaining (positive if expires_at is in the future)
         $timeRemaining = max(0, now()->diffInSeconds($family->session_expires_at, false));
 
-        return view('family.photos', compact('family', 'photos', 'timeRemaining'));
+        $photoUrls = $photos->mapWithKeys(fn ($photo) => [
+            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename),
+        ]);
+
+        return view('family.photos', compact('family', 'photos', 'timeRemaining', 'photoUrls'));
     }
 
     public function toggleSelection(Request $request)

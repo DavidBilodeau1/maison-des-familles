@@ -30,7 +30,7 @@
         @foreach($photos as $photo)
             <div class="relative group cursor-pointer photo-item" data-photo-id="{{ $photo->id }}">
                 <img
-                    src="{{ route('photos.serve', ['family' => $family->directory_name, 'filename' => $photo->photo_filename]) }}"
+                    src="{{ $photoUrls[$photo->id] }}"
                     alt="Photo"
                     class="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg shadow-md transition-transform group-hover:scale-105"
                 >
