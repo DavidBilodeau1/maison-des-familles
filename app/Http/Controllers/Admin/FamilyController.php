@@ -57,12 +57,15 @@ class FamilyController extends Controller
 
     public function show(Family $family)
     {
-        // Sync photos from filesystem
         $this->photoService->syncFamilyPhotos($family);
 
         $family->load('photoSelections');
 
-        return view('admin.families.show', compact('family'));
+        $photoUrls = $family->photoSelections->mapWithKeys(fn ($photo) => [
+            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename),
+        ]);
+
+        return view('admin.families.show', compact('family', 'photoUrls'));
     }
 
     public function edit(Family $family)
