@@ -120,6 +120,13 @@ return [
         // When set, photo URLs point here instead of being served through the app.
         // The server at this URL must serve uploads/{family}/{filename} at /{family}/{filename}.
         'photos_url' => env('PHOTOSHOOT_PHOTOS_URL'),
+
+        // Webhook URL on the local server (same tunnel) that accepts POST /create-directory.
+        // When set, family directory creation is delegated to the local machine.
+        'webhook_url' => env('PHOTOSHOOT_WEBHOOK_URL'),
+
+        // Shared secret sent as Bearer token to authenticate webhook calls.
+        'webhook_secret' => env('PHOTOSHOOT_WEBHOOK_SECRET'),
     ],
 
     /*
