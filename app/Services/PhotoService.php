@@ -141,6 +141,12 @@ class PhotoService
 
     public function getPhotoUrl($familyDirectoryName, $filename)
     {
+        $baseUrl = config('photoshoot.storage.photos_url');
+
+        if ($baseUrl) {
+            return rtrim($baseUrl, '/').'/'.$familyDirectoryName.'/'.$filename;
+        }
+
         return '/photos/'.$familyDirectoryName.'/'.$filename;
     }
 
