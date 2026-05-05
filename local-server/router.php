@@ -55,6 +55,10 @@ function list_images(string $dir): array
     }
     $files = [];
     foreach (scandir($dir) as $file) {
+        // Skip macOS resource fork files (._filename) and hidden files
+        if (str_starts_with($file, '.')) {
+            continue;
+        }
         if (in_array(strtolower(pathinfo($file, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
             $files[] = $file;
         }
