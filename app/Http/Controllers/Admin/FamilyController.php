@@ -43,11 +43,16 @@ class FamilyController extends Controller
             'selection_completed' => false,
         ]);
 
-        // Create directory for family photos
-        $this->photoService->createFamilyDirectory($family->directory_name);
+        // Create directory for family photos (no-op when using external storage)
+        $localPath = $this->photoService->createFamilyDirectory($family->directory_name);
+
+        $message = 'Family created successfully. PIN: '.$family->pin;
+        if ($this->photoService->isExternalStorage()) {
+            $message .= ' — Create this folder on your local machine: '.$localPath;
+        }
 
         return redirect()->route('admin.families.show', $family)
-            ->with('success', 'Family created successfully. PIN: '.$family->pin);
+            ->with('success', $message);
     }
 
     public function show(Family $family)

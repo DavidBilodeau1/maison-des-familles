@@ -159,6 +159,13 @@ class PhotoService
 
     public function createFamilyDirectory($directoryName)
     {
+        // When photos are served externally (e.g. Cloudflare Tunnel), the uploads
+        // directory lives on the local machine, not the app server. Skip creation
+        // and return the expected local path so the admin knows what to create.
+        if (config('photoshoot.storage.photos_url')) {
+            return $this->uploadsPath.'/'.$directoryName;
+        }
+
         $familyDir = $this->uploadsPath.'/'.$directoryName;
 
         if (! File::exists($familyDir)) {
@@ -166,5 +173,10 @@ class PhotoService
         }
 
         return $familyDir;
+    }
+
+    public function isExternalStorage(): bool
+    {
+        return (bool) config('photoshoot.storage.photos_url');
     }
 }
