@@ -3,7 +3,14 @@ set -e
 
 cd /var/www
 
-# Storage and cache permissions
+# Create required Laravel directories (storage/framework is gitignored)
+mkdir -p storage/app/public \
+         storage/framework/cache/data \
+         storage/framework/sessions \
+         storage/framework/views \
+         storage/logs \
+         bootstrap/cache
+
 chmod -R 775 storage bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
 
