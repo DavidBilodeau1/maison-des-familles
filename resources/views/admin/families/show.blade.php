@@ -90,7 +90,7 @@
             @foreach($family->photoSelections as $photo)
                 <div class="relative">
                     <img
-                        src="{{ route('photos.serve', ['family' => $family->directory_name, 'filename' => $photo->photo_filename]) }}"
+                        src="{{ $photoUrls[$photo->id] }}"
                         alt="Photo"
                         class="w-full h-24 sm:h-32 object-cover rounded shadow"
                     >
