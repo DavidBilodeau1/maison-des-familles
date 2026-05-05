@@ -22,9 +22,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
+COPY composer.json composer.lock /var/www/
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
 COPY . /var/www
 
-RUN chown -R www-data:www-data /var/www
+RUN composer dump-autoload --optimize \
+    && chown -R www-data:www-data /var/www
 
 # nginx config
 COPY docker/nginx/default.conf /etc/nginx/sites-available/default
