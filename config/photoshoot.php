@@ -115,6 +115,11 @@ return [
 
         // Allowed photo extensions
         'allowed_extensions' => ['jpg', 'jpeg', 'png', 'gif'],
+
+        // External base URL for photos (e.g. a Cloudflare Tunnel URL).
+        // When set, photo URLs point here instead of being served through the app.
+        // The server at this URL must serve uploads/{family}/{filename} at /{family}/{filename}.
+        'photos_url' => env('PHOTOSHOOT_PHOTOS_URL'),
     ],
 
     /*
