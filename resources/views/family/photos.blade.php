@@ -1,3 +1,6 @@
+@php
+$watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="110"><text x="120" y="55" text-anchor="middle" dominant-baseline="middle" fill="white" fill-opacity="0.07" font-family="Georgia, serif" font-size="22" font-style="italic" transform="rotate(-30 120 55)">Épreuve</text></svg>');
+@endphp
 @extends('layouts.app')
 
 @section('title', 'Sélectionnez vos Photos')
@@ -107,6 +110,8 @@
                     class="max-h-full max-w-full object-contain rounded shadow-2xl"
                     style="transition: opacity .15s ease;"
                 >
+                {{-- Watermark --}}
+                <div class="absolute inset-0 pointer-events-none rounded" style="background-image: url('data:image/svg+xml;base64,{{ $watermarkSvg }}'); background-repeat: repeat;"></div>
                 {{-- Selected glow border --}}
                 <div id="lb-selected-glow" class="absolute inset-0 rounded pointer-events-none hidden"
                     style="box-shadow: inset 0 0 0 3px rgba(34,197,94,.9), 0 0 40px rgba(34,197,94,.25); background: rgba(34,197,94,.06);">
