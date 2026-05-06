@@ -78,7 +78,7 @@
     </main>
 
     @if(config('photoshoot.features.show_footer'))
-    <footer class="w-full ffixed bottom-0 py-3 sm:py-6 bg-white border-t-2 border-{{ config('photoshoot.colors.primary') }}-200">
+    <footer class="w-full fixed bottom-0 py-3 sm:py-6 bg-white border-t-2 border-{{ config('photoshoot.colors.primary') }}-200">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 text-center">
             <p class="text-gray-600 text-xs sm:text-sm">
                 <span class="font-semibold text-{{ config('photoshoot.colors.primary') }}-700">{{ config('photoshoot.branding.organization_name') }}</span> - {{ config('photoshoot.branding.organization_description') }}
