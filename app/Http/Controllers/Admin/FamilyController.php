@@ -62,7 +62,7 @@ class FamilyController extends Controller
         $family->load('photoSelections');
 
         $photoUrls = $family->photoSelections->mapWithKeys(fn ($photo) => [
-            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename),
+            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename, $photo->location),
         ]);
 
         return view('admin.families.show', compact('family', 'photoUrls'));

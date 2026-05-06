@@ -43,7 +43,7 @@ class FamilyPhotoController extends Controller
         $timeRemaining = max(0, now()->diffInSeconds($family->session_expires_at, false));
 
         $photoUrls = $photos->mapWithKeys(fn ($photo) => [
-            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename),
+            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename, $photo->location),
         ]);
 
         return view('family.photos', compact('family', 'photos', 'timeRemaining', 'photoUrls'));

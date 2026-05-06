@@ -142,15 +142,18 @@ if ($method === 'POST') {
     json_out(['error' => 'Unknown endpoint'], 404);
 }
 
-// ── Static file serving: GET /{family}/{filename} ────────────────────────────
+// ── Static file serving ───────────────────────────────────────────────────────
+// GET /photos/{family}/{filename} → uploads
+// GET /final/{family}/{filename}  → final_choices
 
-if ($method === 'GET' && preg_match('#^/([^/]+)/([^/]+)$#', $path, $m)) {
-    $family   = $m[1];
-    $filename = $m[2];
-    $file     = $uploadsDir . '/' . $family . '/' . $filename;
+if ($method === 'GET' && preg_match('#^/(photos|final)/([^/]+)/([^/]+)$#', $path, $m)) {
+    $baseDir  = $m[1] === 'final' ? $finalDir : $uploadsDir;
+    $family   = $m[2];
+    $filename = $m[3];
+    $file     = $baseDir . '/' . $family . '/' . $filename;
 
     // Prevent path traversal
-    if (strpos(realpath($file) ?: '', realpath($uploadsDir)) !== 0) {
+    if (strpos(realpath($file) ?: '', realpath($baseDir)) !== 0) {
         json_out(['error' => 'Forbidden'], 403);
     }
 
