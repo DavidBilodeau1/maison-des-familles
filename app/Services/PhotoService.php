@@ -100,11 +100,13 @@ class PhotoService
 
         $family->photoSelections()
             ->where('location', 'uploads')
+            ->where('is_selected', false)
             ->whereNotIn('photo_filename', $uploadsPhotos)
             ->delete();
 
         $family->photoSelections()
             ->where('location', 'final_choices')
+            ->where('is_selected', false)
             ->whereNotIn('photo_filename', $finalPhotos)
             ->delete();
     }

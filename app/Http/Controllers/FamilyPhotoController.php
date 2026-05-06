@@ -36,8 +36,10 @@ class FamilyPhotoController extends Controller
                 ->with('message', 'Votre session a expiré. Vos sélections ont été sauvegardées.');
         }
 
-        // Sync photos from filesystem
-        $this->photoService->syncFamilyPhotos($family);
+        // Sync photos from filesystem (skip for completed selections — sync can destroy records)
+        if (! $family->selection_completed) {
+            $this->photoService->syncFamilyPhotos($family);
+        }
 
         $photos = $family->photoSelections;
         $timeRemaining = max(0, now()->diffInSeconds($family->session_expires_at, false));
