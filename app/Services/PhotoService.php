@@ -141,8 +141,9 @@ class PhotoService
 
             if (File::exists($sourcePath)) {
                 File::move($sourcePath, $destPath);
-                $selection->update(['location' => 'final_choices']);
             }
+
+            $selection->update(['location' => 'final_choices']);
         }
     }
 

@@ -57,7 +57,9 @@ class FamilyController extends Controller
 
     public function show(Family $family)
     {
-        $this->photoService->syncFamilyPhotos($family);
+        if (! $family->selection_completed) {
+            $this->photoService->syncFamilyPhotos($family);
+        }
 
         $family->load('photoSelections');
 
