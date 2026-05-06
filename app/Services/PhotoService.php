@@ -169,15 +169,19 @@ class PhotoService
         return $familyDir;
     }
 
-    public function getPhotoUrl($familyDirectoryName, $filename)
+    public function getPhotoUrl($familyDirectoryName, $filename, $location = 'uploads')
     {
         $baseUrl = config('photoshoot.storage.photos_url');
 
         if ($baseUrl) {
-            return rtrim($baseUrl, '/').'/'.$familyDirectoryName.'/'.$filename;
+            $prefix = $location === 'final_choices' ? 'final' : 'photos';
+
+            return rtrim($baseUrl, '/').'/'.$prefix.'/'.$familyDirectoryName.'/'.$filename;
         }
 
-        return '/photos/'.$familyDirectoryName.'/'.$filename;
+        $route = $location === 'final_choices' ? 'photos.serve.final' : 'photos.serve';
+
+        return route($route, ['family' => $familyDirectoryName, 'filename' => $filename]);
     }
 
     public function isExternalStorage(): bool

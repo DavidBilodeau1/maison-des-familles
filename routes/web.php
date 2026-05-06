@@ -47,3 +47,13 @@ Route::get('/photos/{family}/{filename}', function ($family, $filename) {
 
     return response()->file($path);
 })->name('photos.serve');
+
+Route::get('/final/{family}/{filename}', function ($family, $filename) {
+    $path = storage_path('app/photos/final_choices/'.$family.'/'.$filename);
+
+    if (! file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+})->name('photos.serve.final');
