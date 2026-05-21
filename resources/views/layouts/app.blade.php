@@ -34,7 +34,7 @@
         </div>
     </nav>
 
-    <main class="py-4 sm:py-6">
+    <main class="pt-4 pb-[8rem]">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             @if(session('success'))
                 <div class="bg-green-100 border-l-4 border-green-500 text-green-700 px-4 sm:px-6 py-3 sm:py-4 rounded-r-lg shadow-md mb-4 sm:mb-6">
