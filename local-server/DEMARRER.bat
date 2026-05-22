@@ -71,8 +71,12 @@ echo  [OK] Serveur PHP demarre sur le port %PORT%
 
 rem ----------------------------------------------------------
 rem Demarrer le tunnel Cloudflare
+rem Generer un fichier de config avec la regle d ingress
 rem ----------------------------------------------------------
-start "CF-Tunnel" /min %CF_EXE% tunnel run --token %CLOUDFLARE_TOKEN%
+echo ingress:>"%TEMP%\cf-photoshoot.yml"
+echo   - service: http://localhost:%PORT%>>"%TEMP%\cf-photoshoot.yml"
+
+start "CF-Tunnel" /min "%CF_EXE%" tunnel run --token %CLOUDFLARE_TOKEN% --config "%TEMP%\cf-photoshoot.yml"
 timeout /t 4 /nobreak >nul
 echo  [OK] Tunnel Cloudflare demarre
 
