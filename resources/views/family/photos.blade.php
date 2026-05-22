@@ -1,5 +1,5 @@
 @php
-$watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="110"><text x="120" y="55" text-anchor="middle" dominant-baseline="middle" fill="white" fill-opacity="0.2" font-family="Georgia, serif" font-size="22" font-style="italic" transform="rotate(-30 120 55)">Épreuve</text></svg>');
+$watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="110"><text x="120" y="55" text-anchor="middle" dominant-baseline="middle" fill="white" fill-opacity="0.5" font-family="Georgia, serif" font-size="22" font-style="italic" transform="rotate(-30 120 55)">Épreuve</text></svg>');
 @endphp
 @extends('layouts.app')
 
