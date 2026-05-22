@@ -2,6 +2,9 @@
 setlocal EnableDelayedExpansion
 title Serveur de Photos - Maison des Familles
 
+:: Store script directory NOW, before any blocks that could confuse %~dp0
+set "HERE=%~dp0"
+
 cls
 echo.
 echo  ============================================================
@@ -10,7 +13,7 @@ echo  ============================================================
 echo.
 
 :: Lire le fichier de configuration
-set "CONF=%~dp0server.conf"
+set "CONF=!HERE!server.conf"
 if not exist "!CONF!" (
     echo  [ERREUR] Fichier server.conf introuvable.
     echo.
@@ -46,51 +49,65 @@ if "!CLOUDFLARE_TOKEN!"=="votre-token-cloudflare-ici" (
 
 :: Trouver PHP
 set "PHP_EXE="
+
 where php >nul 2>&1
 if not errorlevel 1 set "PHP_EXE=php"
 
 if "!PHP_EXE!"=="" (
-    if exist "%~dp0php\php.exe" set "PHP_EXE=%~dp0php\php.exe"
+    set "_try=!HERE!php\php.exe"
+    echo  Recherche PHP : !_try!
+    if exist "!_try!" set "PHP_EXE=!_try!"
 )
 if "!PHP_EXE!"=="" (
-    if exist "C:\php\php.exe" set "PHP_EXE=C:\php\php.exe"
+    set "_try=!HERE!php.exe"
+    echo  Recherche PHP : !_try!
+    if exist "!_try!" set "PHP_EXE=!_try!"
 )
 if "!PHP_EXE!"=="" (
-    if exist "C:\php8\php.exe" set "PHP_EXE=C:\php8\php.exe"
+    set "_try=C:\php\php.exe"
+    echo  Recherche PHP : !_try!
+    if exist "!_try!" set "PHP_EXE=!_try!"
+)
+if "!PHP_EXE!"=="" (
+    set "_try=C:\php8\php.exe"
+    echo  Recherche PHP : !_try!
+    if exist "!_try!" set "PHP_EXE=!_try!"
 )
 
 if "!PHP_EXE!"=="" (
-    echo  [ERREUR] PHP n'est pas installe ou introuvable.
     echo.
-    echo  Pour installer PHP :
-    echo    1. Allez sur https://windows.php.net/download/
-    echo    2. Telechargez "VS16 x64 Non Thread Safe" (fichier .zip)
-    echo    3. Extrayez le contenu dans C:\php\
-    echo    4. Relancez ce script.
+    echo  [ERREUR] PHP introuvable. Chemins verifies ci-dessus.
     echo.
-    echo  OU placez le dossier "php" directement a cote de ce script.
+    echo  Solutions :
+    echo    A) Placez le dossier "php" (contenant php.exe) dans :
+    echo       !HERE!
+    echo.
+    echo    B) Ou telechargez PHP sur https://windows.php.net/download/
+    echo       Choisissez "VS16 x64 Non Thread Safe" (fichier .zip)
+    echo       Extrayez dans C:\php\ et relancez ce script.
     echo.
     pause & exit /b 1
 )
 
 :: Trouver cloudflared
 set "CF_EXE="
+
 where cloudflared >nul 2>&1
 if not errorlevel 1 set "CF_EXE=cloudflared"
 
 if "!CF_EXE!"=="" (
-    if exist "%~dp0cloudflared.exe" set "CF_EXE=%~dp0cloudflared.exe"
+    set "_try=!HERE!cloudflared.exe"
+    if exist "!_try!" set "CF_EXE=!_try!"
 )
 
 if "!CF_EXE!"=="" (
     echo  [ERREUR] cloudflared.exe introuvable.
     echo.
-    echo  Pour l'obtenir :
-    echo    1. Allez sur https://github.com/cloudflare/cloudflared/releases/latest
-    echo    2. Telechargez "cloudflared-windows-amd64.exe"
-    echo    3. Renommez-le "cloudflared.exe"
-    echo    4. Placez-le dans le meme dossier que ce script.
-    echo    5. Relancez ce script.
+    echo  Telechargez cloudflared-windows-amd64.exe depuis :
+    echo  https://github.com/cloudflare/cloudflared/releases/latest
+    echo.
+    echo  Renommez-le "cloudflared.exe" et placez-le ici :
+    echo  !HERE!
     echo.
     pause & exit /b 1
 )
@@ -117,6 +134,7 @@ if not exist "!FINAL_DIR!" (
 )
 
 :: Afficher le resume
+echo.
 echo  [OK] PHP         : !PHP_EXE!
 echo  [OK] cloudflared : !CF_EXE!
 echo  [OK] Photos      : !UPLOADS_DIR!
@@ -131,7 +149,7 @@ set UPLOADS_DIR=!UPLOADS_DIR!
 set FINAL_DIR=!FINAL_DIR!
 set WEBHOOK_SECRET=!WEBHOOK_SECRET!
 
-start "PHP-Photos" /min "!PHP_EXE!" -S localhost:!PORT! "%~dp0router.php"
+start "PHP-Photos" /min "!PHP_EXE!" -S localhost:!PORT! "!HERE!router.php"
 timeout /t 2 /nobreak >nul
 
 netstat -an 2>nul | find "127.0.0.1:!PORT!" >nul 2>&1
