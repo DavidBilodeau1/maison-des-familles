@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 title Serveur de Photos - Maison des Familles
 
@@ -10,7 +9,7 @@ echo    SERVEUR DE PHOTOS - MAISON DES FAMILLES
 echo  ============================================================
 echo.
 
-:: ── Lire le fichier de configuration ─────────────────────────────────────────
+:: Lire le fichier de configuration
 set "CONF=%~dp0server.conf"
 if not exist "!CONF!" (
     echo  [ERREUR] Fichier server.conf introuvable.
@@ -21,18 +20,15 @@ if not exist "!CONF!" (
 )
 
 for /f "usebackq eol=# tokens=1,* delims==" %%A in ("!CONF!") do (
-    set "key=%%A"
-    set "val=%%B"
-    :: Trim leading/trailing spaces from key
-    for /f "tokens=* delims= " %%C in ("!key!") do set "key=%%C"
-    if not "!key!"=="" if not "!val!"=="" (
-        set "!key!=!val!"
-    )
+    set "_k=%%A"
+    set "_v=%%B"
+    for /f "tokens=* delims= " %%C in ("!_k!") do set "_k=%%C"
+    if not "!_k!"=="" if not "!_v!"=="" set "!_k!=!_v!"
 )
 
 if not defined PORT set "PORT=8091"
 
-:: ── Verifier que la configuration a ete remplie ───────────────────────────────
+:: Verifier que la configuration a ete remplie
 if "!WEBHOOK_SECRET!"=="changez-moi" (
     echo  [ERREUR] Vous devez configurer WEBHOOK_SECRET dans server.conf
     echo.
@@ -48,19 +44,27 @@ if "!CLOUDFLARE_TOKEN!"=="votre-token-cloudflare-ici" (
     pause & exit /b 1
 )
 
-:: ── Trouver PHP ───────────────────────────────────────────────────────────────
+:: Trouver PHP
 set "PHP_EXE="
-where php >nul 2>&1 && set "PHP_EXE=php"
-if "!PHP_EXE!"=="" if exist "%~dp0php\php.exe"  set "PHP_EXE=%~dp0php\php.exe"
-if "!PHP_EXE!"=="" if exist "C:\php\php.exe"    set "PHP_EXE=C:\php\php.exe"
-if "!PHP_EXE!"=="" if exist "C:\php8\php.exe"   set "PHP_EXE=C:\php8\php.exe"
+where php >nul 2>&1
+if not errorlevel 1 set "PHP_EXE=php"
+
+if "!PHP_EXE!"=="" (
+    if exist "%~dp0php\php.exe" set "PHP_EXE=%~dp0php\php.exe"
+)
+if "!PHP_EXE!"=="" (
+    if exist "C:\php\php.exe" set "PHP_EXE=C:\php\php.exe"
+)
+if "!PHP_EXE!"=="" (
+    if exist "C:\php8\php.exe" set "PHP_EXE=C:\php8\php.exe"
+)
 
 if "!PHP_EXE!"=="" (
     echo  [ERREUR] PHP n'est pas installe ou introuvable.
     echo.
     echo  Pour installer PHP :
     echo    1. Allez sur https://windows.php.net/download/
-    echo    2. Telechargez "VS16 x64 Non Thread Safe" ^(fichier .zip^)
+    echo    2. Telechargez "VS16 x64 Non Thread Safe" (fichier .zip)
     echo    3. Extrayez le contenu dans C:\php\
     echo    4. Relancez ce script.
     echo.
@@ -69,10 +73,14 @@ if "!PHP_EXE!"=="" (
     pause & exit /b 1
 )
 
-:: ── Trouver cloudflared ───────────────────────────────────────────────────────
+:: Trouver cloudflared
 set "CF_EXE="
-where cloudflared >nul 2>&1 && set "CF_EXE=cloudflared"
-if "!CF_EXE!"=="" if exist "%~dp0cloudflared.exe" set "CF_EXE=%~dp0cloudflared.exe"
+where cloudflared >nul 2>&1
+if not errorlevel 1 set "CF_EXE=cloudflared"
+
+if "!CF_EXE!"=="" (
+    if exist "%~dp0cloudflared.exe" set "CF_EXE=%~dp0cloudflared.exe"
+)
 
 if "!CF_EXE!"=="" (
     echo  [ERREUR] cloudflared.exe introuvable.
@@ -87,7 +95,7 @@ if "!CF_EXE!"=="" (
     pause & exit /b 1
 )
 
-:: ── Verifier si le port est deja utilise ──────────────────────────────────────
+:: Verifier si le port est deja utilise
 netstat -an 2>nul | find "127.0.0.1:!PORT!" >nul 2>&1
 if not errorlevel 1 (
     echo  [ERREUR] Le port !PORT! est deja utilise.
@@ -98,7 +106,7 @@ if not errorlevel 1 (
     pause & exit /b 1
 )
 
-:: ── Creer les dossiers si necessaire ─────────────────────────────────────────
+:: Creer les dossiers si necessaire
 if not exist "!UPLOADS_DIR!" (
     echo  Creation du dossier photos : !UPLOADS_DIR!
     mkdir "!UPLOADS_DIR!" 2>nul
@@ -108,17 +116,17 @@ if not exist "!FINAL_DIR!" (
     mkdir "!FINAL_DIR!" 2>nul
 )
 
-:: ── Afficher le resume de la configuration ────────────────────────────────────
-echo  [OK] PHP        : !PHP_EXE!
-echo  [OK] cloudflared: !CF_EXE!
-echo  [OK] Photos     : !UPLOADS_DIR!
-echo  [OK] Selections : !FINAL_DIR!
-echo  [OK] Port       : !PORT!
+:: Afficher le resume
+echo  [OK] PHP         : !PHP_EXE!
+echo  [OK] cloudflared : !CF_EXE!
+echo  [OK] Photos      : !UPLOADS_DIR!
+echo  [OK] Selections  : !FINAL_DIR!
+echo  [OK] Port        : !PORT!
 echo.
 echo  Demarrage en cours...
 echo.
 
-:: ── Demarrer le serveur PHP ───────────────────────────────────────────────────
+:: Demarrer le serveur PHP
 set UPLOADS_DIR=!UPLOADS_DIR!
 set FINAL_DIR=!FINAL_DIR!
 set WEBHOOK_SECRET=!WEBHOOK_SECRET!
@@ -135,12 +143,12 @@ if errorlevel 1 (
 )
 echo  [OK] Serveur PHP demarre sur le port !PORT!
 
-:: ── Demarrer le tunnel Cloudflare ────────────────────────────────────────────
+:: Demarrer le tunnel Cloudflare
 start "CF-Tunnel" /min "!CF_EXE!" tunnel run --token !CLOUDFLARE_TOKEN!
 timeout /t 4 /nobreak >nul
 echo  [OK] Tunnel Cloudflare demarre
 
-:: ── Affichage final ───────────────────────────────────────────────────────────
+:: Message final
 echo.
 echo  ============================================================
 echo.
@@ -148,15 +156,15 @@ echo    Le serveur est EN COURS D'EXECUTION.
 echo.
 echo    Les familles peuvent maintenant faire leur selection.
 echo.
-echo    IMPORTANT : Ne fermez pas cette fenetre.
-echo    Pour arreter : appuyez sur une touche ou
-echo                   double-cliquez sur ARRETER.bat
+echo    IMPORTANT : Ne fermez pas cette fenetre !
+echo    Pour arreter : appuyez sur une touche,
+echo                   ou double-cliquez sur ARRETER.bat
 echo.
 echo  ============================================================
 echo.
 pause >nul
 
-:: ── Arreter les processus au moment de quitter ────────────────────────────────
+:: Arreter au moment de quitter
 echo  Arret du serveur...
 taskkill /f /fi "WINDOWTITLE eq PHP-Photos" >nul 2>&1
 taskkill /f /fi "WINDOWTITLE eq CF-Tunnel"  >nul 2>&1
