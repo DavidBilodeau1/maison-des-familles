@@ -1,5 +1,8 @@
 * text=auto eol=lf
 
+# Windows batch files must use CRLF or cmd.exe crashes on open
+*.bat text eol=crlf
+
 *.blade.php diff=html
 *.css diff=css
 *.html diff=html
