@@ -72,7 +72,7 @@ echo  [OK] Serveur PHP demarre sur le port %PORT%
 rem ----------------------------------------------------------
 rem Demarrer le tunnel Cloudflare
 rem ----------------------------------------------------------
-start "CF-Tunnel" /min "%CF_EXE%" tunnel run --token %CLOUDFLARE_TOKEN% --config "%~dp0cloudflared-config.yml"
+start "CF-Tunnel" /min %CF_EXE% tunnel run --token %CLOUDFLARE_TOKEN%
 timeout /t 4 /nobreak >nul
 echo  [OK] Tunnel Cloudflare demarre
 
