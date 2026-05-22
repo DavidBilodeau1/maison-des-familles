@@ -148,17 +148,19 @@ if ($method === 'POST') {
 
 if ($method === 'GET' && preg_match('#^/(photos|final)/([^/]+)/([^/]+)$#', $path, $m)) {
     $baseDir  = $m[1] === 'final' ? $finalDir : $uploadsDir;
-    $family   = $m[2];
-    $filename = $m[3];
+    $family   = urldecode($m[2]);
+    $filename = urldecode($m[3]);
     $file     = $baseDir . '/' . $family . '/' . $filename;
 
     // Prevent path traversal
-    if (strpos(realpath($file) ?: '', realpath($baseDir)) !== 0) {
+    if (stripos(realpath($file) ?: '', realpath($baseDir)) !== 0) {
         json_out(['error' => 'Forbidden'], 403);
     }
 
     if (is_file($file)) {
-        $mime = mime_content_type($file) ?: 'application/octet-stream';
+        $mimes = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
+        $ext   = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        $mime  = $mimes[$ext] ?? 'application/octet-stream';
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . filesize($file));
         header('Cache-Control: public, max-age=86400');
