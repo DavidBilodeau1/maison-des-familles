@@ -6,71 +6,63 @@ use App\Models\Family;
 use App\Models\PhotoSelection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class PhotoService
 {
-    protected $photosBasePath;
+    protected string $uploadsPath;
 
-    protected $uploadsPath;
-
-    protected $finalChoicesPath;
+    protected string $finalChoicesPath;
 
     public function __construct()
     {
-        $this->photosBasePath = storage_path('app/photos');
-        $this->uploadsPath = $this->photosBasePath.'/uploads';
-        $this->finalChoicesPath = $this->photosBasePath.'/final_choices';
+        $this->uploadsPath = storage_path('app/photos/uploads');
+        $this->finalChoicesPath = storage_path('app/photos/final_choices');
     }
 
-    public function getFamilyPhotos(Family $family)
+    // ── Storage driver ───────────────────────────────────────────────────────
+
+    public function storageDriver(): string
     {
+        if (config('filesystems.disks.r2.bucket')) {
+            return 'r2';
+        }
         if ($this->webhookUrl()) {
-            $response = $this->webhook('get', '/list-photos/'.$family->directory_name);
-
-            return $response->successful() ? $response->json('files', []) : [];
+            return 'webhook';
         }
 
-        $familyDir = $this->uploadsPath.'/'.$family->directory_name;
-
-        if (! File::exists($familyDir)) {
-            return [];
-        }
-
-        $photos = [];
-        foreach (File::files($familyDir) as $file) {
-            if ($this->isImageFile($file)) {
-                $photos[] = $file->getFilename();
-            }
-        }
-
-        return $photos;
+        return 'local';
     }
 
-    public function getFinalChoicesPhotos(Family $family)
+    public function isExternalStorage(): bool
     {
-        if ($this->webhookUrl()) {
-            $response = $this->webhook('get', '/list-final/'.$family->directory_name);
-
-            return $response->successful() ? $response->json('files', []) : [];
-        }
-
-        $familyDir = $this->finalChoicesPath.'/'.$family->directory_name;
-
-        if (! File::exists($familyDir)) {
-            return [];
-        }
-
-        $photos = [];
-        foreach (File::files($familyDir) as $file) {
-            if ($this->isImageFile($file)) {
-                $photos[] = $file->getFilename();
-            }
-        }
-
-        return $photos;
+        return in_array($this->storageDriver(), ['r2', 'webhook'])
+            || (bool) config('photoshoot.storage.photos_url');
     }
 
-    public function syncFamilyPhotos(Family $family)
+    // ── List photos ──────────────────────────────────────────────────────────
+
+    public function getFamilyPhotos(Family $family): array
+    {
+        return match ($this->storageDriver()) {
+            'r2' => $this->listR2Images("uploads/{$family->directory_name}"),
+            'webhook' => $this->webhookList('/list-photos/'.$family->directory_name),
+            default => $this->listLocalImages($this->uploadsPath.'/'.$family->directory_name),
+        };
+    }
+
+    public function getFinalChoicesPhotos(Family $family): array
+    {
+        return match ($this->storageDriver()) {
+            'r2' => $this->listR2Images("final_choices/{$family->directory_name}"),
+            'webhook' => $this->webhookList('/list-final/'.$family->directory_name),
+            default => $this->listLocalImages($this->finalChoicesPath.'/'.$family->directory_name),
+        };
+    }
+
+    // ── Sync ─────────────────────────────────────────────────────────────────
+
+    public function syncFamilyPhotos(Family $family): void
     {
         $uploadsPhotos = $this->getFamilyPhotos($family);
         $finalPhotos = $this->getFinalChoicesPhotos($family);
@@ -111,7 +103,9 @@ class PhotoService
             ->delete();
     }
 
-    public function moveSelectedPhotos(Family $family)
+    // ── Move selected photos to final_choices ────────────────────────────────
+
+    public function moveSelectedPhotos(Family $family): void
     {
         $selectedPhotos = $family->selectedPhotos;
 
@@ -119,67 +113,89 @@ class PhotoService
             return;
         }
 
-        if ($this->webhookUrl()) {
-            $this->webhook('post', '/move-photos', [
-                'directory_name' => $family->directory_name,
-                'filenames' => $selectedPhotos->pluck('photo_filename')->toArray(),
-            ]);
+        switch ($this->storageDriver()) {
 
-            $selectedPhotos->each(fn ($s) => $s->update(['location' => 'final_choices']));
+            case 'r2':
+                foreach ($selectedPhotos as $selection) {
+                    $src = "uploads/{$family->directory_name}/{$selection->photo_filename}";
+                    $dst = "final_choices/{$family->directory_name}/{$selection->photo_filename}";
+                    if (Storage::disk('r2')->exists($src)) {
+                        Storage::disk('r2')->copy($src, $dst);
+                        Storage::disk('r2')->delete($src);
+                    }
+                    $selection->update(['location' => 'final_choices']);
+                }
+                break;
 
-            return;
-        }
+            case 'webhook':
+                $this->webhook('post', '/move-photos', [
+                    'directory_name' => $family->directory_name,
+                    'filenames' => $selectedPhotos->pluck('photo_filename')->toArray(),
+                ]);
+                $selectedPhotos->each(fn ($s) => $s->update(['location' => 'final_choices']));
+                break;
 
-        $sourceDir = $this->uploadsPath.'/'.$family->directory_name;
-        $destDir = $this->finalChoicesPath.'/'.$family->directory_name;
+            default:
+                $sourceDir = $this->uploadsPath.'/'.$family->directory_name;
+                $destDir = $this->finalChoicesPath.'/'.$family->directory_name;
 
-        if (! File::exists($destDir)) {
-            File::makeDirectory($destDir, 0755, true);
-        }
+                if (! File::exists($destDir)) {
+                    File::makeDirectory($destDir, 0755, true);
+                }
 
-        foreach ($selectedPhotos as $selection) {
-            $sourcePath = $sourceDir.'/'.$selection->photo_filename;
-            $destPath = $destDir.'/'.$selection->photo_filename;
-
-            if (File::exists($sourcePath)) {
-                File::move($sourcePath, $destPath);
-            }
-
-            $selection->update(['location' => 'final_choices']);
+                foreach ($selectedPhotos as $selection) {
+                    $src = $sourceDir.'/'.$selection->photo_filename;
+                    $dst = $destDir.'/'.$selection->photo_filename;
+                    if (File::exists($src)) {
+                        File::move($src, $dst);
+                    }
+                    $selection->update(['location' => 'final_choices']);
+                }
         }
     }
 
-    public function createFamilyDirectory($directoryName)
+    // ── Create family directory ───────────────────────────────────────────────
+
+    public function createFamilyDirectory(string $directoryName): string
     {
-        if ($this->webhookUrl()) {
-            $this->webhook('post', '/create-directory', [
-                'directory_name' => $directoryName,
-            ]);
+        switch ($this->storageDriver()) {
 
-            return $this->uploadsPath.'/'.$directoryName;
+            case 'r2':
+                // R2 is object storage — no real directories needed
+                return "uploads/{$directoryName}";
+
+            case 'webhook':
+                $this->webhook('post', '/create-directory', [
+                    'directory_name' => $directoryName,
+                ]);
+
+                return $this->uploadsPath.'/'.$directoryName;
+
+            default:
+                $dir = $this->uploadsPath.'/'.$directoryName;
+                if (! File::exists($dir)) {
+                    File::makeDirectory($dir, 0755, true);
+                }
+
+                return $dir;
         }
-
-        if (config('photoshoot.storage.photos_url')) {
-            return $this->uploadsPath.'/'.$directoryName;
-        }
-
-        $familyDir = $this->uploadsPath.'/'.$directoryName;
-
-        if (! File::exists($familyDir)) {
-            File::makeDirectory($familyDir, 0755, true);
-        }
-
-        return $familyDir;
     }
 
-    public function getPhotoUrl($familyDirectoryName, $filename, $location = 'uploads')
+    // ── Photo URL ─────────────────────────────────────────────────────────────
+
+    public function getPhotoUrl(string $familyDirectoryName, string $filename, string $location = 'uploads'): string
     {
+        if ($this->storageDriver() === 'r2') {
+            $prefix = $location === 'final_choices' ? 'final_choices' : 'uploads';
+
+            return rtrim(config('filesystems.disks.r2.url'), '/')."/{$prefix}/{$familyDirectoryName}/{$filename}";
+        }
+
         $baseUrl = config('photoshoot.storage.photos_url');
-
         if ($baseUrl) {
             $prefix = $location === 'final_choices' ? 'final' : 'photos';
 
-            return rtrim($baseUrl, '/').'/'.$prefix.'/'.$familyDirectoryName.'/'.$filename;
+            return rtrim($baseUrl, '/')."/{$prefix}/{$familyDirectoryName}/{$filename}";
         }
 
         $route = $location === 'final_choices' ? 'photos.serve.final' : 'photos.serve';
@@ -187,9 +203,45 @@ class PhotoService
         return route($route, ['family' => $familyDirectoryName, 'filename' => $filename]);
     }
 
-    public function isExternalStorage(): bool
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    protected function listR2Images(string $prefix): array
     {
-        return (bool) config('photoshoot.storage.photos_url');
+        $files = Storage::disk('r2')->files($prefix);
+        $images = [];
+        foreach ($files as $path) {
+            $filename = basename($path);
+            if (str_starts_with($filename, '.')) {
+                continue;
+            }
+            if (in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                $images[] = $filename;
+            }
+        }
+
+        return $images;
+    }
+
+    protected function listLocalImages(string $dir): array
+    {
+        if (! File::exists($dir)) {
+            return [];
+        }
+        $photos = [];
+        foreach (File::files($dir) as $file) {
+            if ($this->isImageFile($file)) {
+                $photos[] = $file->getFilename();
+            }
+        }
+
+        return $photos;
+    }
+
+    protected function webhookList(string $endpoint): array
+    {
+        $response = $this->webhook('get', $endpoint);
+
+        return $response->successful() ? $response->json('files', []) : [];
     }
 
     protected function webhookUrl(): ?string
@@ -201,15 +253,13 @@ class PhotoService
     {
         $request = Http::withToken(config('photoshoot.storage.webhook_secret'))
             ->timeout(10);
-
         $url = rtrim($this->webhookUrl(), '/').$endpoint;
 
         return $method === 'post' ? $request->post($url, $data) : $request->get($url);
     }
 
-    protected function isImageFile($file)
+    protected function isImageFile($file): bool
     {
-        // Skip macOS resource fork files (._filename)
         if (str_starts_with($file->getFilename(), '.')) {
             return false;
         }

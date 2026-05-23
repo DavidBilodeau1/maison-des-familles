@@ -43,13 +43,14 @@ class FamilyController extends Controller
             'selection_completed' => false,
         ]);
 
-        // Create directory for family photos (no-op when using external storage)
-        $localPath = $this->photoService->createFamilyDirectory($family->directory_name);
+        $path = $this->photoService->createFamilyDirectory($family->directory_name);
 
         $message = 'Family created successfully. PIN: '.$family->pin;
-        if ($this->photoService->isExternalStorage()) {
-            $message .= ' — Create this folder on your local machine: '.$localPath;
-        }
+        $message .= match ($this->photoService->storageDriver()) {
+            'r2' => ' — Upload photos to your R2 bucket under: '.$path.'/',
+            'webhook' => ' — Create this folder on your local machine: '.$path,
+            default => '',
+        };
 
         return redirect()->route('admin.families.show', $family)
             ->with('success', $message);
