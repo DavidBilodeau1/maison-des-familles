@@ -19,6 +19,12 @@
                 Créer tous les dossiers
             </button>
         </form>
+        <form method="POST" action="{{ route('admin.families.enable-all-logins') }}" onsubmit="return confirm('Activer la connexion pour toutes les familles?')">
+            @csrf
+            <button type="submit" class="w-full sm:w-auto bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-center whitespace-nowrap">
+                Activer tous les accès
+            </button>
+        </form>
         <a href="{{ route('admin.families.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-center whitespace-nowrap">
             Créer une Nouvelle Famille
         </a>
@@ -44,9 +50,12 @@
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap font-mono text-sm hidden sm:table-cell">{{ $family->pin }}</td>
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">{{ $family->directory_name }}</td>
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $family->login_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                            {{ $family->login_enabled ? 'Activée' : 'Désactivée' }}
-                        </span>
+                        <form method="POST" action="{{ route('admin.families.toggle-login', $family) }}">
+                            @csrf
+                            <button type="submit" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full transition-colors cursor-pointer {{ $family->login_enabled ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200' }}">
+                                {{ $family->login_enabled ? 'Activée' : 'Désactivée' }}
+                            </button>
+                        </form>
                     </td>
                     <td class="px-3 sm:px-6 py-4 whitespace-nowrap">
                         @if($family->selection_completed)
@@ -82,4 +91,3 @@
     </table>
 </div>
 @endsection
-

@@ -108,6 +108,15 @@ class FamilyController extends Controller
         return back()->with('success', 'Login access '.($family->login_enabled ? 'enabled' : 'disabled'));
     }
 
+    public function enableAllLogins()
+    {
+        $count = Family::where('login_enabled', false)->count();
+        Family::query()->update(['login_enabled' => true]);
+
+        return redirect()->route('admin.families.index')
+            ->with('success', "Connexion activée pour {$count} famille(s).");
+    }
+
     public function createAllDirectories()
     {
         $families = Family::all();
