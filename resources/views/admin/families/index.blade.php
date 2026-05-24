@@ -12,9 +12,17 @@
 @section('content')
 <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
     <h2 class="text-2xl font-bold">Familles</h2>
-    <a href="{{ route('admin.families.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-center whitespace-nowrap">
-        Créer une Nouvelle Famille
-    </a>
+    <div class="flex flex-col sm:flex-row gap-2">
+        <form method="POST" action="{{ route('admin.families.create-all-directories') }}">
+            @csrf
+            <button type="submit" class="w-full sm:w-auto bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded text-center whitespace-nowrap">
+                Créer tous les dossiers
+            </button>
+        </form>
+        <a href="{{ route('admin.families.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-center whitespace-nowrap">
+            Créer une Nouvelle Famille
+        </a>
+    </div>
 </div>
 
 <div class="bg-white shadow-md rounded-lg overflow-x-auto">

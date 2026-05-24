@@ -108,6 +108,20 @@ class FamilyController extends Controller
         return back()->with('success', 'Login access '.($family->login_enabled ? 'enabled' : 'disabled'));
     }
 
+    public function createAllDirectories()
+    {
+        $families = Family::all();
+        $created = 0;
+
+        foreach ($families as $family) {
+            $this->photoService->createFamilyDirectory($family->directory_name);
+            $created++;
+        }
+
+        return redirect()->route('admin.families.index')
+            ->with('success', "Dossiers créés ou vérifiés pour {$created} familles.");
+    }
+
     public function resetSession(Family $family)
     {
         $family->session_started_at = null;

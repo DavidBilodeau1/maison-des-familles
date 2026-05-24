@@ -31,6 +31,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('logout', [AdminAuthController::class, 'logout'])->name('logout');
 
     Route::middleware('admin.auth')->group(function () {
+        Route::post('families/create-all-directories', [AdminFamilyController::class, 'createAllDirectories'])->name('families.create-all-directories');
         Route::resource('families', AdminFamilyController::class);
         Route::post('families/{family}/toggle-login', [AdminFamilyController::class, 'toggleLogin'])->name('families.toggle-login');
         Route::post('families/{family}/reset-session', [AdminFamilyController::class, 'resetSession'])->name('families.reset-session');
