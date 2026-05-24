@@ -6,21 +6,16 @@ $watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="24
 @section('title', 'Sélectionnez vos Photos')
 
 @section('nav-actions')
-    <div class="flex items-center space-x-4">
-        @if(config('photoshoot.features.show_timer'))
-        <div id="timer" class="text-lg font-semibold text-red-600"></div>
-        @endif
-        <form method="POST" action="{{ route('family.logout') }}">
-            @csrf
-            <button type="submit" class="text-gray-600 hover:text-gray-800">Déconnexion</button>
-        </form>
-    </div>
+    <form method="POST" action="{{ route('family.logout') }}">
+        @csrf
+        <button type="submit" class="text-gray-600 hover:text-gray-800">Déconnexion</button>
+    </form>
 @endsection
 
 @section('content')
 <div class="mb-4 sm:mb-6 px-2 sm:px-0">
     <h2 class="text-xl sm:text-2xl font-bold mb-2">Bienvenue, {{ $family->name }}!@if(config('photoshoot.features.enable_emojis')) 👋@endif</h2>
-    <p class="text-sm sm:text-base text-gray-600">Sélectionnez vos photos préférées. Vous avez {{ config('photoshoot.session.duration_minutes') }} minutes pour faire votre sélection.</p>
+    <p class="text-sm sm:text-base text-gray-600">Sélectionnez vos photos préférées.</p>
     <p class="text-sm text-gray-500 mt-2">Sélectionnées: <span id="selected-count" class="font-bold">{{ $family->selectedPhotos->count() }}</span> photos</p>
 </div>
 
@@ -149,23 +144,8 @@ $watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="24
 
 @push('scripts')
 <script>
-    // ── Timer ──────────────────────────────────────────────────────────────────
-    let timeRemaining = Math.floor({{ $timeRemaining }});
-    const timerElement = document.getElementById('timer');
-    const selectedCountEl = document.getElementById('selected-count');
-
-    function updateTimer() {
-        if (timeRemaining <= 0) { document.getElementById('submit-form').submit(); return; }
-        const m = Math.floor(timeRemaining / 60);
-        const s = Math.floor(timeRemaining % 60);
-        timerElement.textContent = `Temps restant: ${m}:${s.toString().padStart(2, '0')}`;
-        if (timeRemaining <= 60) timerElement.classList.add('animate-pulse');
-        timeRemaining--;
-        setTimeout(updateTimer, 1000);
-    }
-    updateTimer();
-
     // ── Photo index ────────────────────────────────────────────────────────────
+    const selectedCountEl = document.getElementById('selected-count');
     const photos = [
         @foreach($photos as $photo)
         { id: {{ $photo->id }}, url: "{{ $photoUrls[$photo->id] }}", selected: {{ $photo->is_selected ? 'true' : 'false' }} },
