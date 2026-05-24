@@ -24,6 +24,10 @@ class GenerateThumbnails extends Command
 
     public function handle(): int
     {
+        // Camera JPEGs can be 20 MB+; decoded pixel data adds another ~72 MB.
+        // Raise the limit for this command only so GD doesn't silently fail.
+        ini_set('memory_limit', '512M');
+
         $driver = $this->photoService->storageDriver();
         $this->info("Storage driver: {$driver}");
 
@@ -132,16 +136,24 @@ class GenerateThumbnails extends Command
 
     private function resize(string $imageData, int $maxWidth, int $quality): string
     {
-        $src = @imagecreatefromstring($imageData);
-        if ($src === false) {
-            throw new \RuntimeException('Could not decode image — unsupported format or corrupt file');
+        // Write to a temp file so GD reads directly from disk rather than
+        // holding the raw string AND the decoded pixels in memory at once.
+        $tmpFile = tempnam(sys_get_temp_dir(), 'photothumb_');
+        file_put_contents($tmpFile, $imageData);
+        unset($imageData); // free the string immediately
+
+        try {
+            $src = $this->loadImage($tmpFile);
+            $src = $this->applyExifOrientation($src, $tmpFile);
+        } finally {
+            @unlink($tmpFile);
         }
 
         $origW = imagesx($src);
         $origH = imagesy($src);
 
         if ($origW <= $maxWidth) {
-            // Already within size limit — re-encode at reduced quality only
+            // Already within size limit — re-encode at reduced quality only.
             ob_start();
             imagejpeg($src, null, $quality);
             $out = ob_get_clean();
@@ -156,19 +168,56 @@ class GenerateThumbnails extends Command
 
         $dst = imagecreatetruecolor($newW, $newH);
 
-        // Preserve alpha channel for PNG sources
+        // Preserve alpha channel for PNG sources.
         imagealphablending($dst, false);
         imagesavealpha($dst, true);
 
         imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
+        imagedestroy($src);
 
         ob_start();
         imagejpeg($dst, null, $quality);
         $out = ob_get_clean();
-
-        imagedestroy($src);
         imagedestroy($dst);
 
         return $out;
+    }
+
+    private function loadImage(string $path): \GdImage
+    {
+        // Detect MIME from file content (not extension) for reliability.
+        $mime = @mime_content_type($path) ?: '';
+
+        $src = match (true) {
+            str_contains($mime, 'jpeg') => @imagecreatefromjpeg($path),
+            str_contains($mime, 'png') => @imagecreatefrompng($path),
+            str_contains($mime, 'gif') => @imagecreatefromgif($path),
+            str_contains($mime, 'webp') => @imagecreatefromwebp($path),
+            default => @imagecreatefromstring((string) file_get_contents($path)),
+        };
+
+        if ($src === false) {
+            $err = error_get_last();
+            throw new \RuntimeException($err['message'] ?? 'Could not decode image (unsupported format or memory exhausted)');
+        }
+
+        return $src;
+    }
+
+    private function applyExifOrientation(\GdImage $img, string $path): \GdImage
+    {
+        if (! function_exists('exif_read_data')) {
+            return $img;
+        }
+
+        $exif = @exif_read_data($path);
+        $orientation = $exif['Orientation'] ?? 1;
+
+        return match ((int) $orientation) {
+            3 => imagerotate($img, 180, 0) ?: $img,
+            6 => imagerotate($img, -90, 0) ?: $img,
+            8 => imagerotate($img, 90, 0) ?: $img,
+            default => $img,
+        };
     }
 }
