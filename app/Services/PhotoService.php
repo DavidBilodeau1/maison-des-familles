@@ -161,7 +161,15 @@ class PhotoService
         switch ($this->storageDriver()) {
 
             case 'r2':
-                // R2 is object storage — no real directories needed
+                // R2 has no real directories — place a hidden marker so the
+                // folder appears in the dashboard and the prefix is valid.
+                foreach (['uploads', 'final_choices'] as $bucket) {
+                    $marker = "{$bucket}/{$directoryName}/.keep";
+                    if (! Storage::disk('r2')->exists($marker)) {
+                        Storage::disk('r2')->put($marker, '');
+                    }
+                }
+
                 return "uploads/{$directoryName}";
 
             case 'webhook':
@@ -172,12 +180,14 @@ class PhotoService
                 return $this->uploadsPath.'/'.$directoryName;
 
             default:
-                $dir = $this->uploadsPath.'/'.$directoryName;
-                if (! File::exists($dir)) {
-                    File::makeDirectory($dir, 0755, true);
+                foreach ([$this->uploadsPath, $this->finalChoicesPath] as $base) {
+                    $dir = $base.'/'.$directoryName;
+                    if (! File::exists($dir)) {
+                        File::makeDirectory($dir, 0755, true);
+                    }
                 }
 
-                return $dir;
+                return $this->uploadsPath.'/'.$directoryName;
         }
     }
 
