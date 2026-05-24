@@ -48,7 +48,11 @@ class FamilyPhotoController extends Controller
             $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename, $photo->location),
         ]);
 
-        return view('family.photos', compact('family', 'photos', 'timeRemaining', 'photoUrls'));
+        $thumbnailUrls = $photos->mapWithKeys(fn ($photo) => [
+            $photo->id => $this->photoService->getThumbnailUrl($family->directory_name, $photo->photo_filename, $photo->location),
+        ]);
+
+        return view('family.photos', compact('family', 'photos', 'timeRemaining', 'photoUrls', 'thumbnailUrls'));
     }
 
     public function toggleSelection(Request $request)

@@ -29,17 +29,21 @@ $watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="24
         Aucune photo disponible pour le moment. Veuillez contacter l'administrateur.
     </div>
 @else
+    @php $perPage = 24; @endphp
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mb-6 px-2 sm:px-0">
         @foreach($photos as $photo)
             <div
-                class="relative group cursor-pointer photo-item"
+                class="relative group cursor-pointer photo-item{{ $loop->index >= $perPage ? ' hidden' : '' }}"
                 data-photo-id="{{ $photo->id }}"
                 data-photo-index="{{ $loop->index }}"
                 data-selected="{{ $photo->is_selected ? 'true' : 'false' }}"
             >
                 <img
-                    src="{{ $photoUrls[$photo->id] }}"
+                    src="{{ $thumbnailUrls[$photo->id] }}"
+                    data-original="{{ $photoUrls[$photo->id] }}"
                     alt="Photo"
+                    loading="lazy"
+                    onerror="this.src=this.dataset.original"
                     class="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg shadow-md transition-transform group-hover:scale-105"
                 >
                 {{-- Selection overlay --}}
@@ -61,6 +65,15 @@ $watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="24
             </div>
         @endforeach
     </div>
+
+    {{-- Load more --}}
+    @if($photos->count() > $perPage)
+    <div class="flex justify-center mb-6 px-2 sm:px-0">
+        <button id="load-more-btn" class="bg-white border border-gray-300 hover:border-gray-400 text-gray-700 font-semibold py-2.5 px-8 rounded-full shadow-sm transition-all">
+            Charger plus
+        </button>
+    </div>
+    @endif
 
     <div class="flex justify-center px-2 sm:px-0 pb-24">
         <form method="POST" action="{{ route('family.photos.submit') }}" id="submit-form" class="w-full sm:w-auto">
@@ -298,5 +311,35 @@ $watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="24
         }
         touchStartX = null;
     }, { passive: true });
+
+    // ── Pagination ─────────────────────────────────────────────────────────────
+    const PHOTOS_PER_PAGE = {{ $perPage }};
+    const loadMoreBtn     = document.getElementById('load-more-btn');
+
+    if (loadMoreBtn) {
+        let visibleCount = PHOTOS_PER_PAGE;
+        const allItems   = document.querySelectorAll('.photo-item');
+
+        function updateLoadMore() {
+            const remaining = allItems.length - visibleCount;
+            if (remaining <= 0) {
+                loadMoreBtn.parentElement.classList.add('hidden');
+                return;
+            }
+            const next = Math.min(PHOTOS_PER_PAGE, remaining);
+            loadMoreBtn.textContent = `Charger plus (${remaining} restante${remaining > 1 ? 's' : ''})`;
+        }
+
+        loadMoreBtn.addEventListener('click', () => {
+            const next = Math.min(visibleCount + PHOTOS_PER_PAGE, allItems.length);
+            for (let i = visibleCount; i < next; i++) {
+                allItems[i].classList.remove('hidden');
+            }
+            visibleCount = next;
+            updateLoadMore();
+        });
+
+        updateLoadMore();
+    }
 </script>
 @endpush

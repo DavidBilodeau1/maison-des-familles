@@ -191,6 +191,47 @@ class PhotoService
         }
     }
 
+    // ── Thumbnail URL ─────────────────────────────────────────────────────────
+
+    public function getThumbnailUrl(string $familyDirectoryName, string $filename, string $location = 'uploads'): string
+    {
+        if ($this->storageDriver() === 'r2') {
+            return rtrim(config('filesystems.disks.r2.url'), '/')."/thumbs/{$familyDirectoryName}/{$filename}";
+        }
+
+        $thumbPath = storage_path("app/photos/thumbs/{$familyDirectoryName}/{$filename}");
+        if (file_exists($thumbPath)) {
+            return route('photos.serve.thumb', ['family' => $familyDirectoryName, 'filename' => $filename]);
+        }
+
+        // No thumbnail generated yet — fall back to original
+        return $this->getPhotoUrl($familyDirectoryName, $filename, $location);
+    }
+
+    public function thumbnailExists(string $familyDirectoryName, string $filename): bool
+    {
+        if ($this->storageDriver() === 'r2') {
+            return Storage::disk('r2')->exists("thumbs/{$familyDirectoryName}/{$filename}");
+        }
+
+        return file_exists(storage_path("app/photos/thumbs/{$familyDirectoryName}/{$filename}"));
+    }
+
+    public function storeThumbnail(string $familyDirectoryName, string $filename, string $imageData): void
+    {
+        if ($this->storageDriver() === 'r2') {
+            Storage::disk('r2')->put("thumbs/{$familyDirectoryName}/{$filename}", $imageData);
+
+            return;
+        }
+
+        $dir = storage_path("app/photos/thumbs/{$familyDirectoryName}");
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        file_put_contents($dir.'/'.$filename, $imageData);
+    }
+
     // ── Photo URL ─────────────────────────────────────────────────────────────
 
     public function getPhotoUrl(string $familyDirectoryName, string $filename, string $location = 'uploads'): string
