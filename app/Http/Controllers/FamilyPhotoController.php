@@ -27,13 +27,17 @@ class FamilyPhotoController extends Controller
 
         // Check if session is still active
         if (! $family->isSessionActive()) {
-            // Complete selection and move photos
-            $this->completeSelection($family);
+            if ($family->selection_completed) {
+                // Already submitted — just renew the session so they can keep viewing.
+                $family->startSession();
+            } else {
+                // Active session expired before submitting — finalise and send back to login.
+                $this->completeSelection($family);
+                session()->forget('family_id');
 
-            session()->forget('family_id');
-
-            return redirect()->route('family.login')
-                ->with('message', 'Votre session a expiré. Vos sélections ont été sauvegardées.');
+                return redirect()->route('family.login')
+                    ->with('message', 'Votre session a expiré. Vos sélections ont été sauvegardées.');
+            }
         }
 
         // Sync photos from filesystem (skip for completed selections — sync can destroy records)

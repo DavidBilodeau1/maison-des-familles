@@ -119,11 +119,20 @@ class PhotoService
                 foreach ($selectedPhotos as $selection) {
                     $src = "uploads/{$family->directory_name}/{$selection->photo_filename}";
                     $dst = "final_choices/{$family->directory_name}/{$selection->photo_filename}";
-                    if (Storage::disk('r2')->exists($src)) {
+
+                    // Only update the DB location once we can confirm the file
+                    // is actually in final_choices — either it was just copied
+                    // there, or it was already there from a previous attempt.
+                    $atDst = Storage::disk('r2')->exists($dst);
+                    if (! $atDst && Storage::disk('r2')->exists($src)) {
                         Storage::disk('r2')->copy($src, $dst);
                         Storage::disk('r2')->delete($src);
+                        $atDst = true;
                     }
-                    $selection->update(['location' => 'final_choices']);
+
+                    if ($atDst) {
+                        $selection->update(['location' => 'final_choices']);
+                    }
                 }
                 break;
 
