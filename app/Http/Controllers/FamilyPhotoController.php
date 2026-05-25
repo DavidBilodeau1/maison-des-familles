@@ -49,14 +49,22 @@ class FamilyPhotoController extends Controller
         $timeRemaining = max(0, now()->diffInSeconds($family->session_expires_at, false));
 
         $photoUrls = $photos->mapWithKeys(fn ($photo) => [
-            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename, $photo->location),
+            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename,
+                $photo->is_selected ? 'final_choices' : 'uploads'),
+        ]);
+
+        $photoFallbackUrls = $photos->mapWithKeys(fn ($photo) => [
+            $photo->id => $photo->is_selected
+                ? $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename, 'uploads')
+                : null,
         ]);
 
         $thumbnailUrls = $photos->mapWithKeys(fn ($photo) => [
-            $photo->id => $this->photoService->getThumbnailUrl($family->directory_name, $photo->photo_filename, $photo->location),
+            $photo->id => $this->photoService->getThumbnailUrl($family->directory_name, $photo->photo_filename,
+                $photo->is_selected ? 'final_choices' : 'uploads'),
         ]);
 
-        return view('family.photos', compact('family', 'photos', 'timeRemaining', 'photoUrls', 'thumbnailUrls'));
+        return view('family.photos', compact('family', 'photos', 'timeRemaining', 'photoUrls', 'photoFallbackUrls', 'thumbnailUrls'));
     }
 
     public function toggleSelection(Request $request)

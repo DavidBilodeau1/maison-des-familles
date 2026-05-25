@@ -65,10 +65,17 @@ class FamilyController extends Controller
         $family->load('photoSelections');
 
         $photoUrls = $family->photoSelections->mapWithKeys(fn ($photo) => [
-            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename, $photo->location),
+            $photo->id => $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename,
+                $photo->is_selected ? 'final_choices' : 'uploads'),
         ]);
 
-        return view('admin.families.show', compact('family', 'photoUrls'));
+        $photoFallbackUrls = $family->photoSelections->mapWithKeys(fn ($photo) => [
+            $photo->id => $photo->is_selected
+                ? $this->photoService->getPhotoUrl($family->directory_name, $photo->photo_filename, 'uploads')
+                : null,
+        ]);
+
+        return view('admin.families.show', compact('family', 'photoUrls', 'photoFallbackUrls'));
     }
 
     public function edit(Family $family)

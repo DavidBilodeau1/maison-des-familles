@@ -91,6 +91,7 @@
                 <div class="relative">
                     <img
                         src="{{ $photoUrls[$photo->id] }}"
+                        @if($photoFallbackUrls[$photo->id]) data-fallback="{{ $photoFallbackUrls[$photo->id] }}" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.removeAttribute('data-fallback');}" @endif
                         alt="Photo"
                         class="w-full h-24 sm:h-32 object-cover rounded shadow"
                     >

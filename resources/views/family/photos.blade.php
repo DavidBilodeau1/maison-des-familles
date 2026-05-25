@@ -36,9 +36,10 @@ $watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="24
                 <img
                     src="{{ $thumbnailUrls[$photo->id] }}"
                     data-original="{{ $photoUrls[$photo->id] }}"
+                    @if($photoFallbackUrls[$photo->id]) data-fallback="{{ $photoFallbackUrls[$photo->id] }}" @endif
                     alt="Photo"
                     loading="lazy"
-                    onerror="this.src=this.dataset.original"
+                    onerror="if(this.dataset.fallback&&this.src!==this.dataset.fallback){this.src=this.dataset.fallback;}else if(this.src!==this.dataset.original){this.src=this.dataset.original;}"
                     class="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg shadow-md transition-transform group-hover:scale-105"
                 >
                 {{-- Selection overlay --}}
@@ -148,7 +149,7 @@ $watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="24
     const selectedCountEl = document.getElementById('selected-count');
     const photos = [
         @foreach($photos as $photo)
-        { id: {{ $photo->id }}, url: "{{ $photoUrls[$photo->id] }}", selected: {{ $photo->is_selected ? 'true' : 'false' }} },
+        { id: {{ $photo->id }}, url: "{{ $photoUrls[$photo->id] }}", fallbackUrl: "{{ $photoFallbackUrls[$photo->id] ?? '' }}", selected: {{ $photo->is_selected ? 'true' : 'false' }} },
         @endforeach
     ];
 
@@ -223,6 +224,7 @@ $watermarkSvg = base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="24
         const photo = photos[index];
         lbImg.style.opacity = '0';
         lbImg.onload = () => { lbImg.style.opacity = '1'; };
+        lbImg.onerror = () => { if (photo.fallbackUrl && lbImg.src !== photo.fallbackUrl) lbImg.src = photo.fallbackUrl; };
         // If already cached the browser fires load synchronously sometimes
         if (lbImg.complete && lbImg.src === photo.url) lbImg.style.opacity = '1';
         lbImg.src = photo.url;
