@@ -28,13 +28,6 @@ class FamilyAuthController extends Controller
             ]);
         }
 
-        // Check if selection is already completed
-        if ($family->selection_completed) {
-            return back()->withErrors([
-                'pin' => 'Votre sélection de photos a déjà été complétée. Veuillez contacter l\'administrateur si vous devez apporter des modifications.',
-            ]);
-        }
-
         // Start session if not already started or if session expired
         if (! $family->session_started_at || ! $family->isSessionActive()) {
             $family->startSession();
