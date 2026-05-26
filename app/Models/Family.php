@@ -45,7 +45,7 @@ class Family extends Model
     public function startSession()
     {
         $this->session_started_at = now();
-        $this->session_expires_at = now()->addMinutes(config('photoshoot.session.duration_minutes', 30));
+        $this->session_expires_at = now()->addMinutes((int) config('photoshoot.session.duration_minutes', 30));
         $this->save();
     }
 }
