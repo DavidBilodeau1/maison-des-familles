@@ -36,6 +36,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('families', AdminFamilyController::class);
         Route::post('families/{family}/toggle-login', [AdminFamilyController::class, 'toggleLogin'])->name('families.toggle-login');
         Route::post('families/{family}/reset-session', [AdminFamilyController::class, 'resetSession'])->name('families.reset-session');
+        Route::get('families/{family}/selection-info', [AdminFamilyController::class, 'selectionInfo'])->name('families.selection-info');
+        Route::get('families/{family}/download-selection', [AdminFamilyController::class, 'downloadSelection'])->name('families.download-selection');
     });
 });
 

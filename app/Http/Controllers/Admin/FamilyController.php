@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Family;
 use App\Services\PhotoService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use ZipArchive;
 
 class FamilyController extends Controller
 {
@@ -18,7 +20,9 @@ class FamilyController extends Controller
 
     public function index()
     {
-        $families = Family::orderBy('created_at', 'desc')->get();
+        $families = Family::withCount('selectedPhotos')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return view('admin.families.index', compact('families'));
     }
@@ -146,6 +150,57 @@ class FamilyController extends Controller
         $family->save();
 
         return back()->with('success', 'Session reset successfully.');
+    }
+
+    public function selectionInfo(Family $family)
+    {
+        $photos = $family->selectedPhotos;
+
+        return response()->json([
+            'name' => $family->name,
+            'photos' => $photos->map(fn ($p) => [
+                'filename' => $p->photo_filename,
+                'url' => $this->photoService->getPhotoUrl(
+                    $family->directory_name, $p->photo_filename, 'final_choices'
+                ),
+            ]),
+            'download_url' => route('admin.families.download-selection', $family),
+        ]);
+    }
+
+    public function downloadSelection(Family $family)
+    {
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
+
+        $photos = $family->selectedPhotos;
+
+        if ($photos->isEmpty()) {
+            return redirect()->route('admin.families.index')
+                ->with('error', 'Aucune photo sélectionnée pour cette famille.');
+        }
+
+        $zipName = $family->directory_name.'_selection.zip';
+        $tmpPath = tempnam(sys_get_temp_dir(), 'selection_');
+
+        $zip = new ZipArchive;
+        if ($zip->open($tmpPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Could not create ZIP file.');
+        }
+
+        foreach ($photos as $photo) {
+            $key = "final_choices/{$family->directory_name}/{$photo->photo_filename}";
+            $data = Storage::disk('r2')->get($key);
+            if ($data !== null) {
+                $zip->addFromString($photo->photo_filename, $data);
+            }
+        }
+
+        $zip->close();
+
+        return response()->download($tmpPath, $zipName, [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
     }
 
     protected function generatePin()
