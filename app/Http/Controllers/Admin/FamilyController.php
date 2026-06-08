@@ -163,6 +163,9 @@ class FamilyController extends Controller
                 'url' => $this->photoService->getPhotoUrl(
                     $family->directory_name, $p->photo_filename, 'final_choices'
                 ),
+                'fallback_url' => $this->photoService->getPhotoUrl(
+                    $family->directory_name, $p->photo_filename, 'uploads'
+                ),
             ]),
             'download_url' => route('admin.families.download-selection', $family),
         ]);
@@ -189,8 +192,12 @@ class FamilyController extends Controller
         }
 
         foreach ($photos as $photo) {
-            $key = "final_choices/{$family->directory_name}/{$photo->photo_filename}";
-            $data = Storage::disk('r2')->get($key);
+            $finalKey = "final_choices/{$family->directory_name}/{$photo->photo_filename}";
+            $uploadsKey = "uploads/{$family->directory_name}/{$photo->photo_filename}";
+
+            $data = Storage::disk('r2')->get($finalKey)
+                 ?? Storage::disk('r2')->get($uploadsKey);
+
             if ($data !== null) {
                 $zip->addFromString($photo->photo_filename, $data);
             }

@@ -196,9 +196,10 @@
             data.photos.forEach(photo => {
                 const li = document.createElement('li');
                 li.className = 'flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 group';
+                const fallback = photo.fallback_url ? ` onerror="if(this.href!=='${photo.fallback_url}'){this.href='${photo.fallback_url}'}"` : '';
                 li.innerHTML = `
                     <span class="text-sm text-gray-800 font-mono truncate pr-3">${photo.filename}</span>
-                    <a href="${photo.url}" target="_blank" rel="noopener"
+                    <a href="${photo.url}" target="_blank" rel="noopener"${fallback}
                        class="flex-shrink-0 text-xs text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100 transition-opacity">
                         Ouvrir ↗
                     </a>`;
